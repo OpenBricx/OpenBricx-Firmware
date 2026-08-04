@@ -25,3 +25,4 @@ node_modules/
 # NOTE: */dist/*.bin is deliberately NOT ignored. firmware-manifest.json points
 # at those local images and scripts/build-firmware-catalog.mjs hashes them into
 # the signed firmware.json, so the published .bin files must be tracked.
+ 
