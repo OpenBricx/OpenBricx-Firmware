@@ -1,0 +1,80 @@
+# Sign and publish the OpenBricx firmware catalog + images to GitHub Releases.
+#
+# firmware-manifest.json (repo root) lists the images to publish (local bin paths);
+# scripts/build-firmware-catalog.mjs hashes them into firmware.json, which is then
+# Ed25519-signed with the SAME publisher key as the Console's plugin pipeline.
+# The Console verifies the signature (TRUSTED_KEYS in plugins_host.rs) and refuses
+# any downloaded image whose sha256 doesn't match the signed catalog.
+#
+# Required secret:
+#   OBX_PLUGIN_PRIVATE_KEY   base64 PKCS8 of the publisher private key
+#                            (same secret as the Console repo's publish-plugins.yml)
+#
+# Publishing model (matches DEFAULT_FIRMWARE_CATALOG_URL in the Console):
+#   • the versioned tag release (firmware-vN) gets all assets — immutable history;
+#   • the rolling `firmware-latest` release gets the same assets — a stable URL:
+#       https://github.com/<owner>/<repo>/releases/download/firmware-latest/firmware.json
+#
+# Note: images are committed/attached prebuilt for now (deck/dist/*). When CI
+# builds land (espressif/esp-idf-ci-action), point firmware-manifest.json at the
+# build output instead — nothing else changes.
+
+name: Publish firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish to (e.g. firmware-v1)
+        required: true
+  push:
+    tags:
+      - 'firmware-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Resolve tag
+        id: tag
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build catalog (hash images)
+        run: |
+          set -euo pipefail
+          base="https://github.com/${{ github.repository }}/releases/download/firmware-latest"
+          node scripts/build-firmware-catalog.mjs --base-url "$base" --out release
+
+      - name: Sign catalog
+        env:
+          OBX_PLUGIN_PRIVATE_KEY: ${{ secrets.OBX_PLUGIN_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          node scripts/sign-file.mjs release/firmware.json
+          ls -la release
+
+      - name: Publish to versioned release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: release/*
+
+      - name: Publish to rolling firmware-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: firmware-latest
+          name: Firmware catalog (latest)
+          body: >
+            Rolling release backing the Console's built-in firmware catalog URL.
+            Assets here are replaced by each `firmware-v*` publish — see the
+            versioned releases for history.
+          files: release/*

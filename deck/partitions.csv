@@ -1,0 +1,10 @@
+# OpenBricx Deck partition table — dual-OTA (4 MB flash).
+# Two app slots so the running firmware can self-update over USB (esp_ota), then
+# boot the freshly-written slot. NVS keeps its original offset/size so existing
+# macro config survives the one-time cable flash that adopts this layout.
+# Name,    Type, SubType,  Offset,   Size
+nvs,       data, nvs,      0x9000,   0x6000
+otadata,   data, ota,      0xf000,   0x2000
+phy_init,  data, phy,      0x11000,  0x1000
+ota_0,     app,  ota_0,    0x20000,  0x1F0000
+ota_1,     app,  ota_1,    0x210000, 0x1F0000

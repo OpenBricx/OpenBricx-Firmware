@@ -1,0 +1,52 @@
+# OpenBricx Deck — ESP-IDF defaults. Regenerate sdkconfig from these with a clean build.
+
+# Target
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash (the partition table is selected by PlatformIO via board_build.partitions).
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# Native USB peripheral (TinyUSB). We drive descriptors ourselves (CDC + HID).
+# Classes are enabled by their *_COUNT (CFG_TUD_CDC/HID = the count), not a
+# separate _ENABLED flag for HID.
+CONFIG_TINYUSB=y
+CONFIG_TINYUSB_CDC_ENABLED=y
+CONFIG_TINYUSB_CDC_COUNT=1
+CONFIG_TINYUSB_HID_COUNT=1
+
+# FreeRTOS tick at 1 kHz for crisp input/encoder timing.
+CONFIG_FREERTOS_HZ=1000
+
+# BLE HID keyboard over NimBLE (lighter flash/RAM than Bluedroid). The deck
+# advertises as a Bluetooth keyboard and sends keys/media over BLE when off USB
+# (see ble_hid.c / hid.c). esp_hidd's NimBLE device path needs the HID service
+# (default off) plus the DIS PnP/manufacturer/serial chars it sets (default off),
+# and NVS bond persistence so a paired host reconnects without re-pairing.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_HID_SERVICE=y
+CONFIG_BT_NIMBLE_NVS_PERSIST=y
+CONFIG_BT_NIMBLE_SVC_DIS_PNP_ID=y
+CONFIG_BT_NIMBLE_SVC_DIS_MANUFACTURER_NAME=y
+CONFIG_BT_NIMBLE_SVC_DIS_SERIAL_NUMBER=y
+# Battery Service: make the Battery Level characteristic NOTIFY-capable. Without
+# this the char is READ-only — the host reads the level once at connect, caches
+# it, and never sees a change (the gauge looked "stuck" until a BLE reconnect).
+# With it on, ble_svc_bas_battery_level_set() fires ble_gatts_chr_updated() on
+# every change (ble_hid_set_battery from the 10 s battery poll), pushing a GATT
+# notification to subscribed hosts so the displayed % tracks the real charge.
+CONFIG_BT_NIMBLE_SVC_BAS_BATTERY_LEVEL_NOTIFY=y
+
+# HTTP server: allow the OTA handler's headers.
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+
+# Brownout can trip on USB inrush with small LDOs; lower the threshold.
+CONFIG_ESP_BROWNOUT_DET_LVL_SEL_7=y
+
+# Power management: enables runtime CPU frequency scaling via esp_pm_configure()
+# so the deck runs 240 MHz on USB but drops to 160 MHz on battery (lower LDO
+# current). Light sleep / tickless idle stay OFF — we only use fixed-frequency DFS.
+CONFIG_PM_ENABLE=y
+
+# Task watchdog (we feed it from the deck task), 8 s like the original firmware.
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=8

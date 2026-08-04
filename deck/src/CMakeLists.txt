@@ -1,0 +1,31 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "usb_descriptors.c"
+        "hid.c"
+        "macros.c"
+        "obx_protocol.c"
+        "input.c"
+        "encoder.c"
+        "battery.c"
+        "gfx.c"
+        "display.c"
+        "ble_hid.c"
+        "wifi.c"
+        "http_ota.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        driver
+        esp_adc
+        nvs_flash
+        esp_lcd
+        esp_timer
+        espressif__esp_tinyusb
+        esp_wifi
+        esp_netif
+        esp_event
+        esp_http_server
+        app_update
+        bt
+        esp_hid
+)
